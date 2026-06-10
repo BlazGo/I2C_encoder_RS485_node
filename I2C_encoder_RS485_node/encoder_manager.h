@@ -5,8 +5,7 @@
 
 #include "encoder_types.h"
 #include "AS5600.h"
-
-#define NUM_MEAS 16
+#include "config.h"
 
 class EncoderManager{
   public:
@@ -14,15 +13,17 @@ class EncoderManager{
 
     bool init();
     void update();
-    float getAngle();
+    AngleMeasurement getAngle();
 
   private:
-    uint32_t _sample_idx;
-    uint8_t _meas_idx;
-    float _latest_angle;
-    float _past_angles[NUM_MEAS];
-    
     AS5600 _encoder;
+
+    uint8_t _meas_idx;
+    uint16_t _samples[NUM_MEAS];
+    uint32_t _sum_raw;
+
+    AngleMeasurement _latest_measurement;
+    
 };
 
 #endif // ENCODER_MANAGER_H 

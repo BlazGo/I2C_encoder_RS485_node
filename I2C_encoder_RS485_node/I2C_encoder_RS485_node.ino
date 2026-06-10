@@ -1,46 +1,58 @@
 #include <Arduino.h>
 #include <encoder_manager.h>
+#include "node_protocol.h"
+#include "transport_uart.h"
 
 EncoderManager _encoders;
+UartTransport transport(Serial);
+NodeProtocol protocol;
 
-#define MY_LED PA4
-uint32_t start, stop, last_print;
-uint32_t iterations = 0;
+uint32_t now = 0;
+uint32_t last_print_us = 0;
+uint32_t loop_hz = 0;
+uint32_t loop_count = 0;
 
 void setup() {
   pinMode(MY_LED, OUTPUT);
 
-  Serial.begin(115200);
-  while (!Serial);  // Wait for Serial to be ready
-  Serial.println("Initializing");
-  
-  Wire.begin();
-  Wire.setClock(400000);
-  if (_encoders.init()){
-    Serial.println("Encoders connected");
+  if (!_encoders.init()){
+    while(true){
+      digitalWrite(MY_LED, HIGH);
+      delay(100);
+      digitalWrite(MY_LED, LOW);
+      delay(100);
+      }
   }
-  else{
-    Serial.println("Encoders ERROR");
-  }
-  last_print = micros();
+
+  transport.begin(BUS_BAUD);
+  protocol.begin(NODE_ID, &_encoders, &transport);
 }
 
 void loop() {
+  now = micros();
 
-  start = micros();
   _encoders.update();
-  stop = micros();
-  iterations += 1;
+  protocol.update();
 
-  if ((stop - last_print) > 100000){
+  loop_count++;
+
+  if ((now - last_print_us) > 100000){
     digitalWrite(MY_LED, LOW);
-    Serial.print(iterations);
-    Serial.print("\t");
-    Serial.print(stop - start);
-    Serial.print("\t");
-    Serial.println(_encoders.getAngle());
-    last_print = stop;
-    iterations = 0;
+    
+    //printInfo();
+    
+    last_print_us = now;
+    loop_hz = loop_count;
+    loop_count = 0;
+
     digitalWrite(MY_LED, HIGH);
   }
+}
+
+void printInfo(){
+    Serial.print(loop_hz);
+    Serial.print("\t");
+    Serial.print(_encoders.getAngle().angle_rad);
+    Serial.print("\t");
+    Serial.println(_encoders.getAngle().valid);
 }

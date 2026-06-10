@@ -1,48 +1,58 @@
+#include "wiring_constants.h"
+#include "encoder_types.h"
 #include "encoder_manager.h"
 
 EncoderManager::EncoderManager() 
   : _encoder(),
-    _sample_idx(0),
-    _meas_idx(0)
+    _meas_idx(0),
+    _sum_raw(0)
 {
+  _latest_measurement = {0.0f, false};
+
   for (int i=0; i<NUM_MEAS; i++){
-    _past_angles[i] = 0.0f;
+    _samples[i] = 0;
   }
 }
 
 bool EncoderManager::init(){
-  EncoderManager::_encoder.begin();
+  Wire.begin();
+  Wire.setClock(I2C_CLOCK);
 
-  delay(10);
-  if (EncoderManager::_encoder.isConnected() == 1){
-    // Fill all the values to the actual value
-    for (int i=0; i<NUM_MEAS; i++){
-      EncoderManager::update();
-      delay(5);
-    }
-    return true;
-  }
-  else{
+  _encoder.begin();
+  
+  if (!_encoder.isConnected() == 1){
     return false;
   }
+
+  uint16_t first = _encoder.rawAngle();
+
+  _sum_raw = 0;
+  for (uint8_t i = 0; i < NUM_MEAS; i++) {
+    _samples[i] = first;
+    _sum_raw += first;
+  }
+
+  _latest_measurement.angle_rad = (float)first * AS5600_RAW_TO_RADIANS;
+  _meas_idx = 0;
+  return true;
 }
 
 void EncoderManager::update(){
-  EncoderManager::_past_angles[_meas_idx] = EncoderManager::_encoder.rawAngle();
-  EncoderManager::_meas_idx += 1;
-  
-  if (EncoderManager::_meas_idx >= NUM_MEAS){
-    EncoderManager::_meas_idx = 0;
-  }
+  uint16_t new_raw = _encoder.rawAngle();
+  bool magnet_ok = _encoder.magnetDetected(); // && !_encoder.magnetTooStrong() && !_encoder.magnetTooWeak();
 
-  float _cum_sum = 0.0f;
-  for (uint8_t i=0; i<NUM_MEAS; i++){
-    _cum_sum += EncoderManager::_past_angles[i];
-  }
+  _sum_raw -= _samples[_meas_idx];
+  _samples[_meas_idx] = new_raw;
+  _sum_raw += new_raw;
 
-  EncoderManager::_latest_angle = (_cum_sum / NUM_MEAS);
+  _meas_idx++;
+  if (_meas_idx >= NUM_MEAS) {
+    _meas_idx = 0;
+  }
+  _latest_measurement.angle_rad = (float(_sum_raw) / NUM_MEAS) * AS5600_RAW_TO_RADIANS;
+  _latest_measurement.valid = magnet_ok;
 }
 
-float EncoderManager::getAngle(){
-  return EncoderManager::_latest_angle * AS5600_RAW_TO_DEGREES;
+AngleMeasurement EncoderManager::getAngle(){
+  return _latest_measurement;
 }
