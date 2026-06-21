@@ -1,10 +1,10 @@
+
 #ifndef ENCODER_MANAGER_H
 #define ENCODER_MANAGER_H
 
 #include <Arduino.h>
 
-#include "encoder_types.h"
-#include "AS5600.h"
+#include <MT6701.h>
 #include "config.h"
 
 class EncoderManager{
@@ -13,17 +13,15 @@ class EncoderManager{
 
     bool init();
     void update();
-    AngleMeasurement getAngle();
+    float getAngle();
 
   private:
-    AS5600 _encoder;
-
+    uint32_t _sample_idx;
     uint8_t _meas_idx;
-    uint16_t _samples[NUM_MEAS];
-    uint32_t _sum_raw;
-
-    AngleMeasurement _latest_measurement;
+    float _latest_angle;
+    float _past_angles[NUM_MEAS];
     
+    MT6701 _encoder;
 };
 
 #endif // ENCODER_MANAGER_H 
