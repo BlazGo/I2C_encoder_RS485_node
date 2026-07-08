@@ -4,7 +4,10 @@
 #include <Arduino.h>
 #include "encoder_manager.h"
 
-class NodeProtocol{
+#define START_CHAR '<'
+#define END_CHAR   '>'
+
+class NodeProtocol {
   public:
     NodeProtocol();
 
@@ -23,6 +26,9 @@ class NodeProtocol{
     static const uint8_t RX_LINE_MAX = 32;
     char _rx_line[RX_LINE_MAX];
     uint8_t _rx_idx;
+
+    enum class RxState { WAITING_FOR_START, RECEIVING_DATA };
+    RxState _rxState;
 };
 
 #endif // end NODE_PROTOCOL_H
