@@ -4,12 +4,23 @@
 EncoderManager encoders;
 NodeProtocol protocol;
 
+uint32_t t_millis;
+
 void setup() {
-    encoders.init();
-    protocol.begin(NODE_ID, &encoders);
+  pinMode(MY_LED, OUTPUT);
+
+  encoders.init();
+  protocol.begin(NODE_ID, &encoders);
+
+  t_millis = millis();
 }
 
 void loop() {
   encoders.update();
   protocol.update();
+
+  if ((millis() - t_millis) > 500){
+    digitalWrite(MY_LED, !digitalRead(MY_LED));
+    t_millis = millis();
+  }
 }
